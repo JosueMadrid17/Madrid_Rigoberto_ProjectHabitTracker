@@ -1,0 +1,23 @@
+# Dependencias Node
+node_modules/
+
+# Archivos compilados NestJS
+dist/
+
+# Variables de entorno
+.env
+
+# Logs
+*.log
+
+# Archivos temporales
+.DS_Store
+
+# VS Code
+.vscode/
+
+# Prisma
+prisma/*.db
+
+# Archivos de pruebas
+coverage/
