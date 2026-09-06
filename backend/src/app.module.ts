@@ -5,9 +5,16 @@ import { AppService } from './app.service';
 import { UsuariosModule } from './usuarios/usuarios.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
+import { HabitosModule } from './habitos/habitos.module';
 
 @Module({
-  imports: [ConfigModule.forRoot(), UsuariosModule, PrismaModule, AuthModule],
+  imports: [
+    ConfigModule.forRoot(),
+    UsuariosModule,
+    PrismaModule,
+    AuthModule,
+    HabitosModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })
