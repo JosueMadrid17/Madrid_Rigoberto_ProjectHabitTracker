@@ -6,6 +6,9 @@ import { UsuariosModule } from './usuarios/usuarios.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { HabitosModule } from './habitos/habitos.module';
+import { RegistrosController } from './registros/registros.controller';
+import { RegistrosService } from './registros/registros.service';
+import { RegistrosModule } from './registros/registros.module';
 
 @Module({
   imports: [
@@ -14,8 +17,9 @@ import { HabitosModule } from './habitos/habitos.module';
     PrismaModule,
     AuthModule,
     HabitosModule,
+    RegistrosModule,
   ],
-  controllers: [AppController],
-  providers: [AppService],
+  controllers: [AppController, RegistrosController],
+  providers: [AppService, RegistrosService],
 })
 export class AppModule {}

@@ -15,6 +15,7 @@ model Usuario {
   fechaRegistro  DateTime @default(now())
 
   habitos        Habito[]
+  registros      Registro[]
 }
 
 model Habito {
@@ -38,4 +39,7 @@ model Registro {
 
   habitoId    String   @db.ObjectId
   habito      Habito   @relation(fields: [habitoId], references: [id])
+
+  usuarioId   String   @db.ObjectId
+  usuario     Usuario  @relation(fields: [usuarioId], references: [id])
 }
