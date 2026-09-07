@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class ActualizarHabitoDto {
   @IsOptional()
@@ -20,4 +20,8 @@ export class ActualizarHabitoDto {
   @IsString()
   @IsNotEmpty()
   frecuencia?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  activo?: boolean;
 }

@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsBoolean, IsNotEmpty, IsString } from 'class-validator';
 
 export class CrearHabitoDto {
   @IsString()
@@ -16,4 +16,7 @@ export class CrearHabitoDto {
   @IsString()
   @IsNotEmpty()
   frecuencia: string;
+
+  @IsBoolean()
+  activo: boolean;
 }

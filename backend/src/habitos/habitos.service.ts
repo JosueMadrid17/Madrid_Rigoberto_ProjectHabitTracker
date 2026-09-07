@@ -14,6 +14,7 @@ export class HabitosService {
         descripcion: data.descripcion,
         categoria: data.categoria,
         frecuencia: data.frecuencia,
+        activo: data.activo,
         usuarioId: usuarioId,
       },
     });
@@ -67,6 +68,7 @@ export class HabitosService {
         descripcion: data.descripcion,
         categoria: data.categoria,
         frecuencia: data.frecuencia,
+        activo: data.activo,
       },
     });
   }
