@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { RegisterDto } from './dto/register.dto';
@@ -32,7 +32,7 @@ export class AuthService {
     });
 
     if (!usuario) {
-      throw new Error('Usuario no encontrado');
+      throw new UnauthorizedException('Correo o contraseña incorrectos');
     }
 
     const passwordValido = await bcrypt.compare(
@@ -41,7 +41,7 @@ export class AuthService {
     );
 
     if (!passwordValido) {
-      throw new Error('Contraseña incorrecta');
+      throw new UnauthorizedException('Correo o contraseña incorrectos');
     }
 
     const { password, ...usuarioSinPassword } = usuario;
