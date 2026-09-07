@@ -1,39 +1,56 @@
-import { PersonOutlined } from "@mui/icons-material";
+"use client";
+import { useEffect, useState } from "react";
 import { Box, Typography } from "@mui/material";
+import PersonOutlineIcon from "@mui/icons-material/PersonOutlined";
 
 export default function AppHeader() {
+  const [nombre, setNombre] = useState("Usuario");
+
+  useEffect(() => {
+    const usuarioGuardado = localStorage.getItem("usuario");
+    if (!usuarioGuardado) {
+      return;
+    }
+
+    try {
+      const usuario = JSON.parse(usuarioGuardado);
+      if (usuario?.nombre) {
+        setNombre(usuario.nombre);
+      }
+    } catch (error) {
+      console.error("Error al obtener usuario:", error);
+    }
+  }, []);
+
   return (
     <Box
       sx={{
-        height: 76,
-        backgroundColor: "#FFFFFF",
-        borderBottom: "1px solid",
-        borderColor: "divider",
-        px: {
-          xs: 2,
-          md: 3,
-        },
+        height: { xs: 76, md: 82 },
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
+        px: { xs: 2, sm: 3, md: 4 },
+        bgcolor: "background.paper",
+        borderBottom: "1px solid",
+        borderColor: "divider",
       }}
     >
       <Box>
         <Typography
           sx={{
-            fontSize: 17,
+            fontSize: { xs: 18, md: 20 },
             fontWeight: 700,
-            color: "text.primary",
+            lineHeight: 1.2,
           }}
         >
-          ¡Hola, Usuario!
+          ¡Hola, {nombre}!
         </Typography>
 
         <Typography
+          color="text.secondary"
           sx={{
-            fontSize: 10,
-            color: "text.secondary",
-            mt: 0.3,
+            fontSize: 12,
+            mt: 0.4,
           }}
         >
           Aquí tienes un resumen de tu progreso.
@@ -42,17 +59,18 @@ export default function AppHeader() {
 
       <Box
         sx={{
-          width: 32,
-          height: 32,
+          width: 40,
+          height: 40,
           borderRadius: "50%",
-          backgroundColor: "#DCFCE7",
+          bgcolor: "rgba(22, 163, 74, 0.10)",
           color: "primary.main",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
+          flexShrink: 0,
         }}
       >
-        <PersonOutlined sx={{ fontSize: 18 }} />
+        <PersonOutlineIcon fontSize="small" />
       </Box>
     </Box>
   );
