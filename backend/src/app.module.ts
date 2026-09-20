@@ -9,6 +9,7 @@ import { HabitosModule } from './habitos/habitos.module';
 import { RegistrosController } from './registros/registros.controller';
 import { RegistrosService } from './registros/registros.service';
 import { RegistrosModule } from './registros/registros.module';
+import { EstadisticasModule } from './estadisticas/estadisticas.module';
 
 @Module({
   imports: [
@@ -17,7 +18,8 @@ import { RegistrosModule } from './registros/registros.module';
     PrismaModule,
     AuthModule,
     HabitosModule,
-    RegistrosModule,
+    RegistrosModule, 
+    EstadisticasModule,
   ],
   controllers: [AppController, RegistrosController],
   providers: [AppService, RegistrosService],
