@@ -14,7 +14,14 @@ export class HabitosService {
         descripcion: data.descripcion,
         categoria: data.categoria,
         frecuencia: data.frecuencia,
+        prioridad: data.prioridad,
+        fechaInicio: new Date(data.fechaInicio),
+        fechaFinalizacion: data.fechaFinalizacion
+          ? new Date(data.fechaFinalizacion)
+          : null,
         activo: data.activo,
+        meta: data.meta,
+        unidad: data.unidad,
         usuarioId: usuarioId,
       },
     });
@@ -68,7 +75,12 @@ export class HabitosService {
         descripcion: data.descripcion,
         categoria: data.categoria,
         frecuencia: data.frecuencia,
+        prioridad: data.prioridad,
+        fechaInicio: data.fechaInicio ? new Date(data.fechaInicio) : undefined,
+        fechaFinalizacion: data.fechaFinalizacion ? new Date(data.fechaFinalizacion) : null,
         activo: data.activo,
+        meta: data.meta,
+        unidad: data.unidad,
       },
     });
   }

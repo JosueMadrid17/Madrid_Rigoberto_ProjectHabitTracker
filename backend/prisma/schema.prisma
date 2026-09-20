@@ -21,10 +21,17 @@ model Usuario {
 model Habito {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   nombre      String
-  descripcion String?
+  descripcion String
   categoria   String
   frecuencia  String
   activo      Boolean  @default(true)
+
+  prioridad          String
+  fechaInicio        DateTime
+  fechaFinalizacion  DateTime?
+
+  meta        Float?
+  unidad      String?
 
   usuarioId   String   @db.ObjectId
   usuario     Usuario  @relation(fields: [usuarioId], references: [id])
@@ -36,6 +43,7 @@ model Registro {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   fecha       DateTime @default(now())
   completado  Boolean  @default(false)
+  valor       Float    @default(0)
 
   habitoId    String   @db.ObjectId
   habito      Habito   @relation(fields: [habitoId], references: [id])

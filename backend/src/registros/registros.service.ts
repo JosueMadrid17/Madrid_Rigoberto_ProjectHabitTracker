@@ -23,9 +23,53 @@ export class RegistrosService {
       throw new NotFoundException('Hábito no encontrado');
     }
 
+    const inicioDelDia = new Date();
+    inicioDelDia.setHours(0, 0, 0, 0);
+
+    const finDelDia = new Date();
+    finDelDia.setHours(23, 59, 59, 999);
+
+    const registroExistente = await this.prisma.registro.findFirst({
+      where: {
+        habitoId: habitoId,
+        usuarioId: usuarioId,
+        fecha: {
+          gte: inicioDelDia,
+          lte: finDelDia,
+        },
+      },
+    });
+
+    const valorNuevo = data.valor ?? 0;
+
+    if (registroExistente) {
+      const valorAcumulado = registroExistente.valor + valorNuevo;
+
+      const completado =
+        habito.meta !== null &&
+        habito.meta !== undefined &&
+        valorAcumulado >= habito.meta;
+
+      return this.prisma.registro.update({
+        where: {
+          id: registroExistente.id,
+        },
+        data: {
+          valor: valorAcumulado,
+          completado: completado,
+        },
+      });
+    }
+
+    const completado =
+      habito.meta !== null &&
+      habito.meta !== undefined &&
+      valorNuevo >= habito.meta;
+
     return this.prisma.registro.create({
       data: {
-        completado: data.completado ?? false,
+        valor: valorNuevo,
+        completado: completado,
         habitoId: habitoId,
         usuarioId: usuarioId,
       },
@@ -35,9 +79,13 @@ export class RegistrosService {
   async obtenerRegistros(usuarioId: string) {
     return this.prisma.registro.findMany({
       where: {
-        habito: {
-          usuarioId: usuarioId,
-        },
+        usuarioId: usuarioId,
+      },
+      include: {
+        habito: true,
+      },
+      orderBy: {
+        fecha: 'desc',
       },
     });
   }
@@ -46,9 +94,10 @@ export class RegistrosService {
     const registro = await this.prisma.registro.findFirst({
       where: {
         id: id,
-        habito: {
-          usuarioId: usuarioId,
-        },
+        usuarioId: usuarioId,
+      },
+      include: {
+        habito: true,
       },
     });
 
@@ -67,9 +116,10 @@ export class RegistrosService {
     const registro = await this.prisma.registro.findFirst({
       where: {
         id: id,
-        habito: {
-          usuarioId: usuarioId,
-        },
+        usuarioId: usuarioId,
+      },
+      include: {
+        habito: true,
       },
     });
 
@@ -77,14 +127,23 @@ export class RegistrosService {
       throw new NotFoundException('Registro no encontrado');
     }
 
+    const valor = data.valor !== undefined ? data.valor : registro.valor;
+
+    const completado =
+      registro.habito.meta !== null &&
+      registro.habito.meta !== undefined &&
+      valor >= registro.habito.meta;
+
     return this.prisma.registro.update({
       where: {
         id: id,
       },
       data: {
-        ...(data.completado !== undefined && {
-          completado: data.completado,
-        }),
+        valor: valor,
+        completado:
+          data.valor !== undefined
+            ? completado
+            : (data.completado ?? registro.completado),
       },
     });
   }
@@ -93,9 +152,7 @@ export class RegistrosService {
     const registro = await this.prisma.registro.findFirst({
       where: {
         id: id,
-        habito: {
-          usuarioId: usuarioId,
-        },
+        usuarioId: usuarioId,
       },
     });
 
