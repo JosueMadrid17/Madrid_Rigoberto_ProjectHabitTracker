@@ -9,6 +9,7 @@ import {
   PersonOutlined,
 } from "@mui/icons-material";
 import { Box, Divider, List, ListItemButton, Typography } from "@mui/material";
+import { Session } from "@/lib/session";
 
 interface AppSidebarProps {
   active?: "dashboard" | "habitos" | "estadisticas" | "perfil";
@@ -42,6 +43,10 @@ const menuItems = [
 ] as const;
 
 export default function AppSidebar({ active }: AppSidebarProps) {
+  const handleLogout = () => {
+    Session.cerrarSesion();
+    window.location.href = "/login";
+  };
   return (
     <Box
       sx={{
@@ -142,6 +147,7 @@ export default function AppSidebar({ active }: AppSidebarProps) {
         }}
       >
         <ListItemButton
+          onClick={handleLogout}
           sx={{
             minHeight: 42,
             borderRadius: 1.5,

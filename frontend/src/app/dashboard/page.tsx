@@ -19,6 +19,7 @@ import {
 } from "@mui/material";
 import AppHeader from "@/components/layout/AppHeader";
 import AppSidebar from "@/components/layout/AppSidebar";
+import { Session } from "@/lib/session";
 
 type Habito = {
   id: number;
@@ -37,7 +38,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const cargarHabitos = async () => {
       try {
-        const token = localStorage.getItem("access_token");
+        const token = Session.obtenerToken();
         if (!token) {
           window.location.href = "/login";
           return;
@@ -52,8 +53,7 @@ export default function DashboardPage() {
         });
 
         if (respuesta.status === 401) {
-          localStorage.removeItem("access_token");
-          localStorage.removeItem("usuario");
+          Session.cerrarSesion();
           window.location.href = "/login";
           return;
         }

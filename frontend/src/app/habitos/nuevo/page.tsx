@@ -23,6 +23,7 @@ import "dayjs/locale/es";
 import AppHeader from "@/components/layout/AppHeader";
 import AppSidebar from "@/components/layout/AppSidebar";
 import { habitoSchema } from "@/lib/validations/habito.schema";
+import { Session } from "@/lib/session";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -141,7 +142,7 @@ export default function NuevoHabitoPage() {
     try {
       setGuardando(true);
 
-      const token = localStorage.getItem("access_token");
+      const token = Session.obtenerToken();
 
       if (!token) {
         setErrorGeneral("Tu sesión ha expirado. Inicia sesión nuevamente.");

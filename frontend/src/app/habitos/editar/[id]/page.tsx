@@ -20,6 +20,7 @@ import "dayjs/locale/es";
 import AppHeader from "@/components/layout/AppHeader";
 import AppSidebar from "@/components/layout/AppSidebar";
 import { editarHabitoSchema } from "@/lib/validations/editar-habito.schema";
+import { Session } from "@/lib/session";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -95,7 +96,7 @@ export default function EditarHabitoPage() {
         setCargando(true);
         setErrorGeneral("");
 
-        const token = localStorage.getItem("access_token");
+        const token = Session.obtenerToken();
         if (!token) {
           router.push("/login");
           return;
@@ -204,7 +205,7 @@ export default function EditarHabitoPage() {
     try {
       setGuardando(true);
 
-      const token = localStorage.getItem("access_token");
+      const token = Session.obtenerToken();
       if (!token) {
         router.push("/login");
         return;

@@ -2,23 +2,16 @@
 import { useEffect, useState } from "react";
 import { Box, Typography } from "@mui/material";
 import PersonOutlineIcon from "@mui/icons-material/PersonOutlined";
+import { Session } from "@/lib/session";
 
 export default function AppHeader() {
   const [nombre, setNombre] = useState("Usuario");
 
   useEffect(() => {
-    const usuarioGuardado = localStorage.getItem("usuario");
-    if (!usuarioGuardado) {
-      return;
-    }
+    const usuario = Session.obtenerUsuario<{ nombre?: string }>();
 
-    try {
-      const usuario = JSON.parse(usuarioGuardado);
-      if (usuario?.nombre) {
-        setNombre(usuario.nombre);
-      }
-    } catch (error) {
-      console.error("Error al obtener usuario:", error);
+    if (usuario?.nombre) {
+      setNombre(usuario.nombre);
     }
   }, []);
 

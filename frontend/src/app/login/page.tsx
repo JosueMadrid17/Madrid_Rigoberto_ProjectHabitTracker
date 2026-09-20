@@ -18,6 +18,7 @@ import {
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import { loginSchema } from "@/lib/validations/login.schema";
+import { Session } from "@/lib/session";
 
 export default function LoginPage() {
   const [correo, setCorreo] = useState("");
@@ -68,8 +69,7 @@ export default function LoginPage() {
         return;
       }
 
-      localStorage.setItem("access_token", datos.access_token);
-      localStorage.setItem("usuario", JSON.stringify(datos.usuario));
+      Session.guardarSesion(datos.access_token, datos.usuario);
       console.log("Login correcto:", datos);
       window.location.href = "/dashboard";
     } catch (error) {

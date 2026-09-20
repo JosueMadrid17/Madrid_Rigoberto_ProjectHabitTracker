@@ -28,6 +28,7 @@ import {
 } from "@mui/material";
 import AppHeader from "@/components/layout/AppHeader";
 import AppSidebar from "@/components/layout/AppSidebar";
+import { Session } from "@/lib/session";
 
 type Habito = {
   id: string;
@@ -92,7 +93,7 @@ export default function HabitosPage() {
         setCargando(true);
         setErrorGeneral("");
 
-        const token = localStorage.getItem("access_token");
+        const token = Session.obtenerToken();
         if (!token) {
           window.location.href = "/login";
           return;
@@ -152,7 +153,7 @@ export default function HabitosPage() {
     try {
       setEliminando(true);
 
-      const token = localStorage.getItem("access_token");
+      const token = Session.obtenerToken();
       if (!token) {
         window.location.href = "/login";
         return;
