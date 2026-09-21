@@ -1,12 +1,11 @@
 "use client";
-import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Alert,
   Box,
   Button,
   Card,
-  FormControlLabel,
   FormControl,
   MenuItem,
   Select,
@@ -15,163 +14,161 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { KeyboardArrowDown } from "@mui/icons-material";
-import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
-import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import dayjs, { Dayjs } from "dayjs";
-import "dayjs/locale/es";
+import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import AppHeader from "@/components/layout/AppHeader";
 import AppSidebar from "@/components/layout/AppSidebar";
-import { habitoSchema } from "@/lib/validations/habito.schema";
 import { Session } from "@/lib/session";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
-type Errores = {
-  nombre?: string;
-  descripcion?: string;
-  categoria?: string;
-  frecuencia?: string;
-  prioridad?: string;
-  fechaInicio?: string;
-  fechaFinalizacion?: string;
+const obtenerFechaLocal = () => {
+  const fecha = new Date();
+  const año = fecha.getFullYear();
+  const mes = String(fecha.getMonth() + 1).padStart(2, "0");
+  const dia = String(fecha.getDate()).padStart(2, "0");
+  return `${año}-${mes}-${dia}`;
 };
 
-function capitalizar(texto: string) {
-  if (!texto) return "";
-
-  return texto
-    .trim()
-    .toLowerCase()
-    .replace(/^\p{L}/u, (letra) => letra.toUpperCase());
-}
+const hoy = obtenerFechaLocal();
+const categorias = ["Salud", "Estudio", "Bienestar", "Personal"];
+const frecuencias = ["Diario", "Semanal", "Personalizada"];
+const prioridades = ["Baja", "Media", "Alta"];
+const unidades = [
+  "litros",
+  "ml",
+  "km",
+  "metros",
+  "minutos",
+  "horas",
+  "repeticiones",
+  "páginas",
+  "veces",
+];
 
 export default function NuevoHabitoPage() {
+  const router = useRouter();
+  const fechaInicioRef = useRef<HTMLInputElement>(null);
+  const fechaFinalizacionRef = useRef<HTMLInputElement>(null);
   const [nombre, setNombre] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [categoria, setCategoria] = useState("");
-  const [frecuencia, setFrecuencia] = useState("diario");
-  const [prioridad, setPrioridad] = useState("media");
-  const [fechaInicio, setFechaInicio] = useState(dayjs().format("YYYY-MM-DD"));
+  const [frecuencia, setFrecuencia] = useState("Diario");
+  const [prioridad, setPrioridad] = useState("Media");
+  const [fechaInicio, setFechaInicio] = useState(hoy);
   const [fechaFinalizacion, setFechaFinalizacion] = useState("");
+  const [meta, setMeta] = useState("");
+  const [unidad, setUnidad] = useState("");
   const [activo, setActivo] = useState(true);
-  const [errores, setErrores] = useState<Errores>({});
+  const [errores, setErrores] = useState<{
+    nombre?: string;
+    descripcion?: string;
+    categoria?: string;
+    frecuencia?: string;
+    prioridad?: string;
+    fechaInicio?: string;
+    meta?: string;
+    unidad?: string;
+  }>({});
   const [errorGeneral, setErrorGeneral] = useState("");
   const [guardando, setGuardando] = useState(false);
-  const fechaHoy = dayjs();
-  const cambiarFechaInicio = (fecha: Dayjs | null) => {
-    const nuevaFecha = fecha ? fecha.format("YYYY-MM-DD") : "";
-    setFechaInicio(nuevaFecha);
-    setErrores((prev) => ({
-      ...prev,
-      fechaInicio: undefined,
-      fechaFinalizacion: undefined,
-    }));
+  const validarFormulario = () => {
+    const nuevosErrores: typeof errores = {};
 
-    if (
-      fechaFinalizacion &&
-      nuevaFecha &&
-      dayjs(fechaFinalizacion).isBefore(dayjs(nuevaFecha), "day")
-    ) {
-      setFechaFinalizacion("");
+    if (!nombre.trim()) {
+      nuevosErrores.nombre = "El nombre es obligatorio";
     }
-  };
 
-  const cambiarFechaFinalizacion = (fecha: Dayjs | null) => {
-    const nuevaFecha = fecha ? fecha.format("YYYY-MM-DD") : "";
+    if (!descripcion.trim()) {
+      nuevosErrores.descripcion = "La descripción es obligatoria";
+    }
 
-    setFechaFinalizacion(nuevaFecha);
-    setErrores((prev) => ({
-      ...prev,
-      fechaFinalizacion: undefined,
-    }));
+    if (!categoria) {
+      nuevosErrores.categoria = "Selecciona una categoría";
+    }
+
+    if (!frecuencia) {
+      nuevosErrores.frecuencia = "Selecciona una frecuencia";
+    }
+
+    if (!prioridad) {
+      nuevosErrores.prioridad = "Selecciona una prioridad";
+    }
+
+    if (!fechaInicio) {
+      nuevosErrores.fechaInicio = "La fecha de inicio es obligatoria";
+    }
+
+    if (fechaInicio < hoy) {
+      nuevosErrores.fechaInicio =
+        "La fecha de inicio no puede ser anterior a hoy";
+    }
+
+    if (fechaFinalizacion && fechaFinalizacion < fechaInicio) {
+      nuevosErrores.fechaInicio =
+        "La fecha de inicio no puede ser posterior a la fecha de finalización";
+    }
+
+    if (!meta.trim()) {
+      nuevosErrores.meta = "La meta es obligatoria";
+    } else {
+      const metaNumero = Number(meta);
+
+      if (!Number.isFinite(metaNumero) || metaNumero < 0) {
+        nuevosErrores.meta = "Ingresa una meta válida";
+      }
+    }
+
+    if (!unidad) {
+      nuevosErrores.unidad = "Selecciona una unidad";
+    }
+    setErrores(nuevosErrores);
+    return Object.keys(nuevosErrores).length === 0;
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setErrores({});
     setErrorGeneral("");
 
-    const datosFormulario = {
-      nombre: nombre.trim(),
-      descripcion: descripcion.trim(),
-      categoria: categoria.trim(),
-      frecuencia: frecuencia.trim(),
-      prioridad: prioridad.trim(),
-      fechaInicio,
-      fechaFinalizacion: fechaFinalizacion || undefined,
-      activo,
-    };
-
-    const resultado = habitoSchema.safeParse(datosFormulario);
-
-    if (!resultado.success) {
-      const nuevosErrores: Errores = {};
-
-      resultado.error.issues.forEach((error) => {
-        const campo = error.path[0];
-
-        if (typeof campo === "string") {
-          nuevosErrores[campo as keyof Errores] = error.message;
-        }
-      });
-
-      setErrores(nuevosErrores);
+    if (!validarFormulario()) {
       return;
     }
 
-    const fechaInicioSeleccionada = dayjs(resultado.data.fechaInicio);
-    if (fechaInicioSeleccionada.isBefore(fechaHoy, "day")) {
-      setErrores({
-        fechaInicio: "La fecha de inicio no puede ser anterior a hoy.",
-      });
-      return;
-    }
+    const token = Session.obtenerToken();
 
-    if (resultado.data.fechaFinalizacion) {
-      const fechaFinal = dayjs(resultado.data.fechaFinalizacion);
-      if (fechaFinal.isBefore(fechaInicioSeleccionada, "day")) {
-        setErrores({
-          fechaFinalizacion:
-            "La fecha de finalización no puede ser anterior a la fecha de inicio.",
-        });
-        return;
-      }
+    if (!token) {
+      router.push("/login");
+      return;
     }
 
     try {
       setGuardando(true);
-
-      const token = Session.obtenerToken();
-
-      if (!token) {
-        setErrorGeneral("Tu sesión ha expirado. Inicia sesión nuevamente.");
-        return;
-      }
-
-      const datosParaBackend = {
-        nombre: capitalizar(resultado.data.nombre),
-        descripcion: resultado.data.descripcion,
-        categoria: resultado.data.categoria
-          ? capitalizar(resultado.data.categoria)
-          : undefined,
-        frecuencia: capitalizar(resultado.data.frecuencia),
-        prioridad: capitalizar(resultado.data.prioridad),
-        fechaInicio: resultado.data.fechaInicio,
-        fechaFinalizacion: resultado.data.fechaFinalizacion || undefined,
-        activo: resultado.data.activo,
-      };
-
       const respuesta = await fetch(`${API_URL}/habitos`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(datosParaBackend),
+        body: JSON.stringify({
+          nombre: nombre.trim(),
+          descripcion: descripcion.trim(),
+          categoria,
+          frecuencia,
+          prioridad,
+          fechaInicio,
+          ...(fechaFinalizacion ? { fechaFinalizacion } : {}),
+          activo,
+          meta: Number(meta),
+          unidad,
+        }),
       });
 
       const datos = await respuesta.json().catch(() => null);
+
+      if (respuesta.status === 401) {
+        Session.cerrarSesion();
+        router.push("/login");
+        return;
+      }
 
       if (!respuesta.ok) {
         setErrorGeneral(
@@ -181,11 +178,9 @@ export default function NuevoHabitoPage() {
         );
         return;
       }
-
-      window.location.href = "/habitos";
+      router.push("/habitos");
     } catch (error) {
       console.error("Error al crear hábito:", error);
-
       setErrorGeneral(
         "No se pudo conectar con el servidor. Intenta nuevamente.",
       );
@@ -195,491 +190,605 @@ export default function NuevoHabitoPage() {
   };
 
   return (
-    <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="es">
+    <Box
+      sx={{
+        minHeight: "100vh",
+        display: "flex",
+        bgcolor: "background.default",
+      }}
+    >
+      <AppSidebar active="habitos" />
+
       <Box
         sx={{
-          minHeight: "100vh",
+          flex: 1,
+          minWidth: 0,
           display: "flex",
-          bgcolor: "background.default",
+          flexDirection: "column",
         }}
       >
-        <AppSidebar active="habitos" />
+        <AppHeader />
 
         <Box
           component="main"
           sx={{
             flex: 1,
-            minWidth: 0,
-            height: "100vh",
+            minHeight: 0,
+            height: "calc(100vh - 80px)",
             overflow: "hidden",
+            px: { xs: 2, sm: 3, md: 4 },
+            py: { xs: 1.5, md: 2 },
           }}
         >
-          <AppHeader />
-
-          <Box
-            sx={{
-              maxWidth: 1250,
-              mx: "auto",
-              px: { xs: 2, md: 3 },
-              py: { xs: 2, md: 2.5 },
-            }}
-          >
-            <Box sx={{ mb: 1.5 }}>
-              <Typography
-                variant="h4"
-                sx={{
-                  fontSize: { xs: 25, md: 28 },
-                  lineHeight: 1.15,
-                  mb: 0.4,
-                }}
-              >
-                Crear hábito
-              </Typography>
-
-              <Typography color="text.secondary" sx={{ fontSize: 13 }}>
-                Define los detalles de tu nuevo hábito.
-              </Typography>
-            </Box>
-
-            <Card
-              component="form"
-              onSubmit={handleSubmit}
-              noValidate
+          <Box sx={{ maxWidth: 1400, mx: "auto" }}>
+            <Typography
+              variant="h4"
               sx={{
-                p: { xs: 2, md: 2.5 },
+                fontSize: { xs: 27, md: 30 },
+                fontWeight: 700,
+                mb: 0.2,
               }}
             >
-              <Box
-                sx={{
-                  display: "grid",
-                  gridTemplateColumns: {
-                    xs: "1fr",
-                    md: "1fr 1fr",
-                  },
-                  gap: { xs: 2, md: 2.5 },
-                }}
-              >
-                <Box
-                  sx={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 1.5,
-                  }}
-                >
-                  <Box>
-                    <Typography
-                      component="label"
-                      htmlFor="nombre"
-                      sx={{
-                        display: "block",
-                        fontSize: 12,
-                        fontWeight: 600,
-                        mb: 0.5,
-                      }}
-                    >
-                      Nombre del hábito *
-                    </Typography>
+              Crear hábito
+            </Typography>
 
-                    <TextField
-                      id="nombre"
-                      fullWidth
-                      size="small"
-                      value={nombre}
-                      onChange={(event) => {
-                        setNombre(event.target.value);
+            <Typography
+              color="text.secondary"
+              sx={{
+                fontSize: 14,
+                mb: 1.5,
+              }}
+            >
+              Define los detalles de tu nuevo hábito.
+            </Typography>
 
-                        setErrores((prev) => ({
-                          ...prev,
-                          nombre: undefined,
-                        }));
-                      }}
-                      error={Boolean(errores.nombre)}
-                      helperText={errores.nombre}
-                      placeholder="Ej. Leer 20 minutos"
-                    />
-                  </Box>
+            <Card
+              sx={{
+                p: { xs: 1.2, sm: 1.8, md: 2.3 },
+              }}
+            >
+              <Box component="form" onSubmit={handleSubmit} noValidate>
+                <Stack spacing={1.2}>
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns: {
+                        xs: "1fr",
+                        md: "1.2fr 0.8fr",
+                      },
+                      gap: 3,
+                    }}
+                  >
+                    <Stack spacing={1.2}>
+                      <FormControl fullWidth>
+                        <Typography
+                          component="label"
+                          htmlFor="nombre"
+                          sx={{
+                            mb: 0.8,
+                            fontWeight: 600,
+                            fontSize: 14,
+                          }}
+                        >
+                          Nombre del hábito *
+                        </Typography>
 
-                  <Box>
-                    <Typography
-                      component="label"
-                      htmlFor="descripcion"
-                      sx={{
-                        display: "block",
-                        fontSize: 12,
-                        fontWeight: 600,
-                        mb: 0.5,
-                      }}
-                    >
-                      Descripción
-                    </Typography>
+                        <TextField
+                          id="nombre"
+                          value={nombre}
+                          onChange={(event) => {
+                            setNombre(event.target.value);
 
-                    <TextField
-                      id="descripcion"
-                      fullWidth
-                      multiline
-                      rows={3.5}
-                      value={descripcion}
-                      onChange={(event) => {
-                        setDescripcion(event.target.value);
+                            if (errores.nombre) {
+                              setErrores((prev) => ({
+                                ...prev,
+                                nombre: undefined,
+                              }));
+                            }
+                          }}
+                          error={Boolean(errores.nombre)}
+                          helperText={errores.nombre}
+                          placeholder="Ej. Leer 20 minutos"
+                          fullWidth
+                        />
+                      </FormControl>
 
-                        setErrores((prev) => ({
-                          ...prev,
-                          descripcion: undefined,
-                        }));
-                      }}
-                      error={Boolean(errores.descripcion)}
-                      helperText={errores.descripcion}
-                      placeholder="Describe tu hábito..."
-                    />
-                  </Box>
+                      <FormControl fullWidth>
+                        <Typography
+                          component="label"
+                          htmlFor="descripcion"
+                          sx={{
+                            mb: 0.8,
+                            fontWeight: 600,
+                            fontSize: 14,
+                          }}
+                        >
+                          Descripción *
+                        </Typography>
 
-                  <Box>
-                    <Typography
-                      component="label"
-                      htmlFor="categoria"
-                      sx={{
-                        display: "block",
-                        fontSize: 12,
-                        fontWeight: 600,
-                        mb: 0.5,
-                      }}
-                    >
-                      Categoría *
-                    </Typography>
+                        <TextField
+                          id="descripcion"
+                          value={descripcion}
+                          onChange={(event) => {
+                            setDescripcion(event.target.value);
 
-                    <FormControl
-                      fullWidth
-                      size="small"
-                      error={Boolean(errores.categoria)}
-                    >
-                      <Select
-                        id="categoria"
-                        value={categoria}
-                        onChange={(event) => {
-                          setCategoria(event.target.value);
+                            if (errores.descripcion) {
+                              setErrores((prev) => ({
+                                ...prev,
+                                descripcion: undefined,
+                              }));
+                            }
+                          }}
+                          error={Boolean(errores.descripcion)}
+                          helperText={errores.descripcion}
+                          placeholder="Describe tu hábito..."
+                          multiline
+                          minRows={2}
+                          fullWidth
+                        />
+                      </FormControl>
 
-                          setErrores((prev) => ({
-                            ...prev,
-                            categoria: undefined,
-                          }));
-                        }}
-                        displayEmpty
-                        IconComponent={KeyboardArrowDown}
-                        renderValue={(valor) =>
-                          valor
-                            ? capitalizar(valor)
-                            : "Selecciona una categoría"
-                        }
-                      >
-                        <MenuItem value="">Selecciona una categoría</MenuItem>
-                        <MenuItem value="salud">Salud</MenuItem>
-                        <MenuItem value="bienestar">Bienestar</MenuItem>
-                        <MenuItem value="desarrollo">
-                          Desarrollo personal
-                        </MenuItem>
-                        <MenuItem value="estudio">Estudio</MenuItem>
-                      </Select>
-                    </FormControl>
+                      <FormControl fullWidth error={Boolean(errores.categoria)}>
+                        <Typography
+                          component="label"
+                          htmlFor="categoria"
+                          sx={{
+                            mb: 0.8,
+                            fontWeight: 600,
+                            fontSize: 14,
+                          }}
+                        >
+                          Categoría *
+                        </Typography>
 
-                    {errores.categoria && (
-                      <Typography
-                        variant="caption"
-                        color="error"
-                        sx={{ ml: 1.5 }}
-                      >
-                        {errores.categoria}
-                      </Typography>
-                    )}
-                  </Box>
-                </Box>
+                        <Select
+                          id="categoria"
+                          value={categoria}
+                          displayEmpty
+                          MenuProps={{
+                            disableScrollLock: true,
+                          }}
+                          onChange={(event) => {
+                            setCategoria(event.target.value);
 
-                <Box
-                  sx={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 1.5,
-                  }}
-                >
-                  <Box>
-                    <Typography
-                      component="label"
-                      htmlFor="frecuencia"
-                      sx={{
-                        display: "block",
-                        fontSize: 12,
-                        fontWeight: 600,
-                        mb: 0.5,
-                      }}
-                    >
-                      Frecuencia *
-                    </Typography>
+                            if (errores.categoria) {
+                              setErrores((prev) => ({
+                                ...prev,
+                                categoria: undefined,
+                              }));
+                            }
+                          }}
+                        >
+                          <MenuItem value="" disabled>
+                            Selecciona una categoría
+                          </MenuItem>
 
-                    <FormControl
-                      fullWidth
-                      size="small"
-                      error={Boolean(errores.frecuencia)}
-                    >
-                      <Select
-                        id="frecuencia"
-                        value={frecuencia}
-                        onChange={(event) => {
-                          setFrecuencia(event.target.value);
+                          {categorias.map((item) => (
+                            <MenuItem key={item} value={item}>
+                              {item}
+                            </MenuItem>
+                          ))}
+                        </Select>
 
-                          setErrores((prev) => ({
-                            ...prev,
-                            frecuencia: undefined,
-                          }));
-                        }}
-                        IconComponent={KeyboardArrowDown}
-                        renderValue={(valor) => capitalizar(valor)}
-                      >
-                        <MenuItem value="">Selecciona una frecuencia</MenuItem>
-                        <MenuItem value="diario">Diario</MenuItem>
-                        <MenuItem value="semanal">Semanal</MenuItem>
-                      </Select>
-                    </FormControl>
+                        {errores.categoria && (
+                          <Typography
+                            sx={{
+                              mt: 0.5,
+                              ml: 1.5,
+                              fontSize: 12,
+                              color: "error.main",
+                            }}
+                          >
+                            {errores.categoria}
+                          </Typography>
+                        )}
+                      </FormControl>
 
-                    {errores.frecuencia && (
-                      <Typography
-                        variant="caption"
-                        color="error"
-                        sx={{ ml: 1.5 }}
-                      >
-                        {errores.frecuencia}
-                      </Typography>
-                    )}
-                  </Box>
-
-                  <Box>
-                    <Typography
-                      component="label"
-                      htmlFor="prioridad"
-                      sx={{
-                        display: "block",
-                        fontSize: 12,
-                        fontWeight: 600,
-                        mb: 0.5,
-                      }}
-                    >
-                      Prioridad *
-                    </Typography>
-
-                    <FormControl
-                      fullWidth
-                      size="small"
-                      error={Boolean(errores.prioridad)}
-                    >
-                      <Select
-                        id="prioridad"
-                        value={prioridad}
-                        onChange={(event) => {
-                          setPrioridad(event.target.value);
-
-                          setErrores((prev) => ({
-                            ...prev,
-                            prioridad: undefined,
-                          }));
-                        }}
-                        IconComponent={KeyboardArrowDown}
-                        renderValue={(valor) => capitalizar(valor)}
-                      >
-                        <MenuItem value="">Selecciona una prioridad</MenuItem>
-                        <MenuItem value="alta">Alta</MenuItem>
-                        <MenuItem value="media">Media</MenuItem>
-                        <MenuItem value="baja">Baja</MenuItem>
-                      </Select>
-                    </FormControl>
-
-                    {errores.prioridad && (
-                      <Typography
-                        variant="caption"
-                        color="error"
-                        sx={{ ml: 1.5 }}
-                      >
-                        {errores.prioridad}
-                      </Typography>
-                    )}
-                  </Box>
-
-                  <Box>
-                    <Typography
-                      component="label"
-                      htmlFor="fechaInicio"
-                      sx={{
-                        display: "block",
-                        fontSize: 12,
-                        fontWeight: 600,
-                        mb: 0.5,
-                      }}
-                    >
-                      Fecha de inicio *
-                    </Typography>
-
-                    <DatePicker
-                      value={fechaInicio ? dayjs(fechaInicio) : null}
-                      onChange={cambiarFechaInicio}
-                      minDate={fechaHoy}
-                      format="DD/MM/YYYY"
-                      slotProps={{
-                        textField: {
-                          fullWidth: true,
-                          size: "small",
-                          error: Boolean(errores.fechaInicio),
-                          helperText: errores.fechaInicio,
-                          slotProps: {
-                            htmlInput: {
-                              readOnly: true,
-                            },
-                          },
-                        },
-                      }}
-                    />
-                  </Box>
-
-                  <Box>
-                    <Typography
-                      component="label"
-                      htmlFor="fechaFin"
-                      sx={{
-                        display: "block",
-                        fontSize: 12,
-                        fontWeight: 600,
-                        mb: 0.5,
-                      }}
-                    >
-                      Fecha de finalización{" "}
                       <Box
-                        component="span"
                         sx={{
-                          color: "text.secondary",
-                          fontWeight: 400,
-                        }}
-                      >
-                        (opcional)
-                      </Box>
-                    </Typography>
-
-                    <DatePicker
-                      value={
-                        fechaFinalizacion ? dayjs(fechaFinalizacion) : null
-                      }
-                      onChange={cambiarFechaFinalizacion}
-                      minDate={fechaInicio ? dayjs(fechaInicio) : fechaHoy}
-                      format="DD/MM/YYYY"
-                      slotProps={{
-                        textField: {
-                          fullWidth: true,
-                          size: "small",
-                          error: Boolean(errores.fechaFinalizacion),
-                          helperText: errores.fechaFinalizacion,
-                          slotProps: {
-                            htmlInput: {
-                              readOnly: true,
-                            },
+                          display: "grid",
+                          gridTemplateColumns: {
+                            xs: "1fr",
+                            sm: "1fr 1fr",
                           },
-                        },
-                      }}
-                    />
-                  </Box>
-                </Box>
-              </Box>
-
-              {errorGeneral && (
-                <Alert severity="error" sx={{ mt: 2 }}>
-                  {errorGeneral}
-                </Alert>
-              )}
-
-              <Box
-                sx={{
-                  mt: 1.75,
-                  pt: 1.5,
-                  borderTop: "1px solid",
-                  borderColor: "divider",
-                  display: "flex",
-                  alignItems: {
-                    xs: "flex-start",
-                    sm: "center",
-                  },
-                  justifyContent: "space-between",
-                  gap: 2,
-                  flexDirection: {
-                    xs: "column",
-                    sm: "row",
-                  },
-                }}
-              >
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={activo}
-                      onChange={(event) => setActivo(event.target.checked)}
-                      color="primary"
-                    />
-                  }
-                  label={
-                    <Box>
-                      <Typography
-                        sx={{
-                          fontSize: 12,
-                          fontWeight: 600,
+                          gap: 2,
                         }}
                       >
-                        Hábito activo
-                      </Typography>
+                        <FormControl fullWidth error={Boolean(errores.meta)}>
+                          <Typography
+                            component="label"
+                            htmlFor="meta"
+                            sx={{
+                              mb: 0.8,
+                              fontWeight: 600,
+                              fontSize: 14,
+                            }}
+                          >
+                            Meta *
+                          </Typography>
 
-                      <Typography color="text.secondary" sx={{ fontSize: 11 }}>
-                        El hábito estará disponible para seguimiento.
-                      </Typography>
+                          <TextField
+                            id="meta"
+                            type="number"
+                            value={meta}
+                            onChange={(event) => {
+                              setMeta(event.target.value);
+
+                              if (errores.meta) {
+                                setErrores((prev) => ({
+                                  ...prev,
+                                  meta: undefined,
+                                }));
+                              }
+                            }}
+                            error={Boolean(errores.meta)}
+                            helperText={
+                              errores.meta || "Cantidad que quieres alcanzar"
+                            }
+                            slotProps={{
+                              htmlInput: {
+                                min: 0,
+                                step: "any",
+                              },
+                            }}
+                            placeholder="Ej. 5"
+                            fullWidth
+                          />
+                        </FormControl>
+
+                        <FormControl fullWidth error={Boolean(errores.unidad)}>
+                          <Typography
+                            component="label"
+                            htmlFor="unidad"
+                            sx={{
+                              mb: 0.8,
+                              fontWeight: 600,
+                              fontSize: 14,
+                            }}
+                          >
+                            Unidad *
+                          </Typography>
+
+                          <Select
+                            id="unidad"
+                            value={unidad}
+                            displayEmpty
+                            MenuProps={{
+                              disableScrollLock: true,
+                            }}
+                            onChange={(event) => {
+                              setUnidad(event.target.value);
+
+                              if (errores.unidad) {
+                                setErrores((prev) => ({
+                                  ...prev,
+                                  unidad: undefined,
+                                }));
+                              }
+                            }}
+                          >
+                            <MenuItem value="" disabled>
+                              Selecciona una unidad
+                            </MenuItem>
+
+                            {unidades.map((item) => (
+                              <MenuItem key={item} value={item}>
+                                {item}
+                              </MenuItem>
+                            ))}
+                          </Select>
+
+                          {errores.unidad && (
+                            <Typography
+                              sx={{
+                                mt: 0.5,
+                                ml: 1.5,
+                                fontSize: 12,
+                                color: "error.main",
+                              }}
+                            >
+                              {errores.unidad}
+                            </Typography>
+                          )}
+                        </FormControl>
+                      </Box>
+                    </Stack>
+
+                    <Stack spacing={1.2}>
+                      <FormControl
+                        fullWidth
+                        error={Boolean(errores.frecuencia)}
+                      >
+                        <Typography
+                          component="label"
+                          htmlFor="frecuencia"
+                          sx={{
+                            mb: 0.8,
+                            fontWeight: 600,
+                            fontSize: 14,
+                          }}
+                        >
+                          Frecuencia *
+                        </Typography>
+
+                        <Select
+                          id="frecuencia"
+                          value={frecuencia}
+                          MenuProps={{
+                            disableScrollLock: true,
+                          }}
+                          onChange={(event) => {
+                            setFrecuencia(event.target.value);
+
+                            if (errores.frecuencia) {
+                              setErrores((prev) => ({
+                                ...prev,
+                                frecuencia: undefined,
+                              }));
+                            }
+                          }}
+                        >
+                          {frecuencias.map((item) => (
+                            <MenuItem key={item} value={item}>
+                              {item}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+
+                      <FormControl fullWidth error={Boolean(errores.prioridad)}>
+                        <Typography
+                          component="label"
+                          htmlFor="prioridad"
+                          sx={{
+                            mb: 0.8,
+                            fontWeight: 600,
+                            fontSize: 14,
+                          }}
+                        >
+                          Prioridad *
+                        </Typography>
+
+                        <Select
+                          id="prioridad"
+                          value={prioridad}
+                          MenuProps={{
+                            disableScrollLock: true,
+                          }}
+                          onChange={(event) => {
+                            setPrioridad(event.target.value);
+
+                            if (errores.prioridad) {
+                              setErrores((prev) => ({
+                                ...prev,
+                                prioridad: undefined,
+                              }));
+                            }
+                          }}
+                        >
+                          {prioridades.map((item) => (
+                            <MenuItem key={item} value={item}>
+                              {item}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+
+                      <FormControl fullWidth>
+                        <Typography
+                          component="label"
+                          htmlFor="fechaInicio"
+                          sx={{
+                            mb: 0.8,
+                            fontWeight: 600,
+                            fontSize: 14,
+                          }}
+                        >
+                          Fecha de inicio *
+                        </Typography>
+
+                        <TextField
+                          id="fechaInicio"
+                          type="date"
+                          value={fechaInicio}
+                          onChange={(event) => {
+                            setFechaInicio(event.target.value);
+
+                            if (errores.fechaInicio) {
+                              setErrores((prev) => ({
+                                ...prev,
+                                fechaInicio: undefined,
+                              }));
+                            }
+                          }}
+                          error={Boolean(errores.fechaInicio)}
+                          helperText={errores.fechaInicio}
+                          fullWidth
+                          inputRef={fechaInicioRef}
+                          slotProps={{
+                            inputLabel: {
+                              shrink: true,
+                            },
+                            htmlInput: {
+                              min: hoy,
+                            },
+                            input: {
+                              endAdornment: (
+                                <CalendarMonthIcon
+                                  sx={{
+                                    color: "text.secondary",
+                                    cursor: "pointer",
+                                  }}
+                                  onClick={() => {
+                                    fechaInicioRef.current?.showPicker?.();
+                                  }}
+                                />
+                              ),
+                            },
+                          }}
+                        />
+                      </FormControl>
+
+                      <FormControl fullWidth>
+                        <Typography
+                          component="label"
+                          htmlFor="fechaFinalizacion"
+                          sx={{
+                            mb: 0.8,
+                            fontWeight: 600,
+                            fontSize: 14,
+                          }}
+                        >
+                          Fecha de finalización{" "}
+                          <Typography
+                            component="span"
+                            color="text.secondary"
+                            sx={{ fontSize: 13 }}
+                          >
+                            (opcional)
+                          </Typography>
+                        </Typography>
+
+                        <TextField
+                          id="fechaFinalizacion"
+                          type="date"
+                          value={fechaFinalizacion}
+                          onChange={(event) =>
+                            setFechaFinalizacion(event.target.value)
+                          }
+                          fullWidth
+                          inputRef={fechaFinalizacionRef}
+                          slotProps={{
+                            inputLabel: {
+                              shrink: true,
+                            },
+                            htmlInput: {
+                              min: fechaInicio || hoy,
+                            },
+                            input: {
+                              endAdornment: (
+                                <CalendarMonthIcon
+                                  sx={{
+                                    color: "text.secondary",
+                                    cursor: "pointer",
+                                  }}
+                                  onClick={() => {
+                                    fechaFinalizacionRef.current?.showPicker?.();
+                                  }}
+                                />
+                              ),
+                            },
+                          }}
+                        />
+                      </FormControl>
+                    </Stack>
+                  </Box>
+
+                  <Box
+                    sx={{
+                      borderTop: "1px solid",
+                      borderColor: "divider",
+                      pt: 1.5,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 2,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1.5,
+                      }}
+                    >
+                      <Switch
+                        checked={activo}
+                        onChange={(event) => setActivo(event.target.checked)}
+                        color="primary"
+                      />
+
+                      <Box>
+                        <Typography
+                          sx={{
+                            fontWeight: 600,
+                            fontSize: 14,
+                          }}
+                        >
+                          Hábito activo
+                        </Typography>
+
+                        <Typography
+                          color="text.secondary"
+                          sx={{ fontSize: 13 }}
+                        >
+                          El hábito estará disponible para seguimiento.
+                        </Typography>
+                      </Box>
                     </Box>
-                  }
-                  sx={{
-                    ml: 0,
-                    mr: 0,
-                  }}
-                />
 
-                <Box
-                  sx={{
-                    display: "flex",
-                    gap: 1,
-                    width: {
-                      xs: "100%",
-                      sm: "auto",
-                    },
-                    justifyContent: "flex-end",
-                  }}
-                >
-                  <Button
-                    component={Link}
-                    href="/habitos"
-                    variant="outlined"
-                    color="primary"
-                    disabled={guardando}
-                    sx={{
-                      minWidth: 90,
-                    }}
-                  >
-                    Cancelar
-                  </Button>
+                    {errorGeneral && (
+                      <Alert
+                        severity="error"
+                        sx={{
+                          flex: 1,
+                          minWidth: 250,
+                        }}
+                      >
+                        {errorGeneral}
+                      </Alert>
+                    )}
 
-                  <Button
-                    type="submit"
-                    variant="contained"
-                    color="primary"
-                    disabled={guardando}
-                    sx={{
-                      minWidth: 110,
-                    }}
-                  >
-                    {guardando ? "Creando..." : "Crear hábito"}
-                  </Button>
-                </Box>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        gap: 1.5,
+                        alignItems: "center",
+                      }}
+                    >
+                      <Button
+                        type="button"
+                        variant="outlined"
+                        onClick={() => router.push("/habitos")}
+                        disabled={guardando}
+                        sx={{
+                          px: 3,
+                        }}
+                      >
+                        Volver
+                      </Button>
+
+                      <Button
+                        type="button"
+                        variant="outlined"
+                        onClick={() => router.push("/habitos")}
+                        disabled={guardando}
+                        sx={{
+                          px: 3,
+                        }}
+                      >
+                        Cancelar
+                      </Button>
+
+                      <Button
+                        type="submit"
+                        variant="contained"
+                        disabled={guardando}
+                        sx={{
+                          px: 3,
+                        }}
+                      >
+                        {guardando ? "Creando..." : "Crear hábito"}
+                      </Button>
+                    </Box>
+                  </Box>
+                </Stack>
               </Box>
             </Card>
           </Box>
         </Box>
       </Box>
-    </LocalizationProvider>
+    </Box>
   );
 }
