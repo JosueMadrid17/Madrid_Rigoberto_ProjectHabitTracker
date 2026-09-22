@@ -32,6 +32,8 @@ type Errores = {
   prioridad?: string;
   fechaInicio?: string;
   fechaFinalizacion?: string;
+  meta?: string;
+  unidad?: string;
 };
 
 type Habito = {
@@ -43,6 +45,8 @@ type Habito = {
   prioridad?: string;
   fechaInicio?: string;
   fechaFinalizacion?: string;
+  meta?: number;
+  unidad?: string;
   activo?: boolean;
 };
 
@@ -65,9 +69,11 @@ function normalizarTexto(valor: string) {
 
 function normalizarFecha(valor?: string | null) {
   if (!valor) return "";
+
   const fecha = dayjs(valor);
 
   if (!fecha.isValid()) return "";
+
   return fecha.format("YYYY-MM-DD");
 }
 
@@ -82,6 +88,8 @@ export default function EditarHabitoPage() {
   const [categoria, setCategoria] = useState("");
   const [frecuencia, setFrecuencia] = useState("");
   const [prioridad, setPrioridad] = useState("");
+  const [meta, setMeta] = useState("");
+  const [unidad, setUnidad] = useState("");
   const [fechaInicio, setFechaInicio] = useState("");
   const [fechaFinalizacion, setFechaFinalizacion] = useState("");
   const [activo, setActivo] = useState(true);
@@ -97,6 +105,7 @@ export default function EditarHabitoPage() {
         setErrorGeneral("");
 
         const token = Session.obtenerToken();
+
         if (!token) {
           router.push("/login");
           return;
@@ -110,6 +119,7 @@ export default function EditarHabitoPage() {
         });
 
         const datos = await respuesta.json();
+
         if (!respuesta.ok) {
           throw new Error(
             typeof datos.message === "string"
@@ -119,16 +129,27 @@ export default function EditarHabitoPage() {
         }
 
         const habito: Habito = datos;
+
         setNombre(habito.nombre || "");
         setDescripcion(habito.descripcion || "");
         setCategoria(habito.categoria ? habito.categoria.toLowerCase() : "");
         setFrecuencia(habito.frecuencia ? habito.frecuencia.toLowerCase() : "");
         setPrioridad(habito.prioridad ? habito.prioridad.toLowerCase() : "");
+
+        setMeta(
+          habito.meta !== undefined && habito.meta !== null
+            ? String(habito.meta)
+            : "",
+        );
+
+        setUnidad(habito.unidad ? habito.unidad.toLowerCase() : "");
         setFechaInicio(normalizarFecha(habito.fechaInicio));
         setFechaFinalizacion(normalizarFecha(habito.fechaFinalizacion));
+
         setActivo(habito.activo !== false);
       } catch (error) {
         console.error("Error al cargar hábito:", error);
+
         setErrorGeneral(
           error instanceof Error
             ? error.message
@@ -138,6 +159,7 @@ export default function EditarHabitoPage() {
         setCargando(false);
       }
     };
+
     if (id) {
       cargarHabito();
     }
@@ -145,12 +167,14 @@ export default function EditarHabitoPage() {
 
   const cambiarFechaInicio = (fecha: Dayjs | null) => {
     const nuevaFecha = fecha ? fecha.format("YYYY-MM-DD") : "";
+
     setFechaInicio(nuevaFecha);
     setErrores((prev) => ({
       ...prev,
       fechaInicio: undefined,
       fechaFinalizacion: undefined,
     }));
+
     if (
       fechaFinalizacion &&
       nuevaFecha &&
@@ -162,6 +186,7 @@ export default function EditarHabitoPage() {
 
   const cambiarFechaFinalizacion = (fecha: Dayjs | null) => {
     const nuevaFecha = fecha ? fecha.format("YYYY-MM-DD") : "";
+
     setFechaFinalizacion(nuevaFecha);
     setErrores((prev) => ({
       ...prev,
@@ -171,9 +196,28 @@ export default function EditarHabitoPage() {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
     setErrores({});
     setErrorGeneral("");
     setMensajeExito("");
+
+    const metaNumero = Number(meta);
+    const erroresMeta: Errores = {};
+
+    if (!meta.trim()) {
+      erroresMeta.meta = "La meta es obligatoria.";
+    } else if (!Number.isFinite(metaNumero) || metaNumero < 1) {
+      erroresMeta.meta = "La meta debe ser un número mayor o igual a 0.";
+    }
+
+    if (!unidad.trim()) {
+      erroresMeta.unidad = "La unidad es obligatoria.";
+    }
+
+    if (Object.keys(erroresMeta).length > 0) {
+      setErrores(erroresMeta);
+      return;
+    }
 
     const datosFormulario = {
       nombre: normalizarTexto(nombre),
@@ -183,6 +227,8 @@ export default function EditarHabitoPage() {
       prioridad: prioridad.toLowerCase().trim(),
       fechaInicio,
       fechaFinalizacion: fechaFinalizacion || undefined,
+      meta: metaNumero,
+      unidad: unidad.toLowerCase().trim(),
       activo,
     };
 
@@ -190,6 +236,7 @@ export default function EditarHabitoPage() {
 
     if (!validacion.success) {
       const nuevosErrores: Errores = {};
+
       validacion.error.issues.forEach((error) => {
         const campo = error.path[0];
 
@@ -206,10 +253,17 @@ export default function EditarHabitoPage() {
       setGuardando(true);
 
       const token = Session.obtenerToken();
+
       if (!token) {
         router.push("/login");
         return;
       }
+
+      const datosActualizar = {
+        ...validacion.data,
+        meta: metaNumero,
+        unidad: unidad.toLowerCase().trim(),
+      };
 
       const respuesta = await fetch(`${API_URL}/habitos/${id}`, {
         method: "PATCH",
@@ -217,10 +271,11 @@ export default function EditarHabitoPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(validacion.data),
+        body: JSON.stringify(datosActualizar),
       });
 
       const datos = await respuesta.json().catch(() => null);
+
       if (!respuesta.ok) {
         throw new Error(
           datos && typeof datos.message === "string"
@@ -230,11 +285,13 @@ export default function EditarHabitoPage() {
       }
 
       setMensajeExito("Hábito actualizado correctamente.");
+
       setTimeout(() => {
         router.push("/habitos");
       }, 900);
     } catch (error) {
       console.error("Error al actualizar hábito:", error);
+
       setErrorGeneral(
         error instanceof Error
           ? error.message
@@ -261,6 +318,8 @@ export default function EditarHabitoPage() {
           sx={{
             flex: 1,
             minWidth: 0,
+            height: "100vh",
+            overflow: "hidden",
           }}
         >
           <AppHeader />
@@ -296,26 +355,31 @@ export default function EditarHabitoPage() {
           sx={{
             flex: 1,
             minWidth: 0,
+            height: "100vh",
+            overflow: "hidden",
           }}
         >
           <AppHeader />
 
           <Box
             sx={{
+              minHeight: "calc(100vh - 90px)",
+              overflow: "hidden",
               px: {
                 xs: 2,
                 sm: 3,
                 md: 4,
               },
               py: {
-                xs: 2,
-                md: 3,
+                xs: 1.5,
+                md: 2,
               },
               maxWidth: 1500,
               mx: "auto",
+              boxSizing: "border-box",
             }}
           >
-            <Box sx={{ mb: 2.5 }}>
+            <Box sx={{ mb: 2 }}>
               <Typography
                 component="h1"
                 sx={{
@@ -351,10 +415,11 @@ export default function EditarHabitoPage() {
                 border: "1px solid",
                 borderColor: "divider",
                 boxShadow: 3,
+                boxSizing: "border-box",
               }}
             >
               <Box component="form" onSubmit={handleSubmit} noValidate>
-                <Stack spacing={2.2}>
+                <Stack spacing={2}>
                   <Box
                     sx={{
                       display: "grid",
@@ -387,6 +452,7 @@ export default function EditarHabitoPage() {
                           value={nombre}
                           onChange={(event) => {
                             setNombre(event.target.value);
+
                             setErrores((prev) => ({
                               ...prev,
                               nombre: undefined,
@@ -415,10 +481,11 @@ export default function EditarHabitoPage() {
                           id="descripcion"
                           fullWidth
                           multiline
-                          rows={4}
+                          rows={2}
                           value={descripcion}
                           onChange={(event) => {
                             setDescripcion(event.target.value);
+
                             setErrores((prev) => ({
                               ...prev,
                               descripcion: undefined,
@@ -453,6 +520,7 @@ export default function EditarHabitoPage() {
                             value={categoria}
                             onChange={(event) => {
                               setCategoria(event.target.value);
+
                               setErrores((prev) => ({
                                 ...prev,
                                 categoria: undefined,
@@ -486,6 +554,123 @@ export default function EditarHabitoPage() {
                             {errores.categoria}
                           </Typography>
                         )}
+                      </Box>
+
+                      <Box
+                        sx={{
+                          display: "grid",
+                          gridTemplateColumns: {
+                            xs: "1fr",
+                            sm: "1fr 1fr",
+                          },
+                          gap: 1.5,
+                        }}
+                      >
+                        <Box>
+                          <Typography
+                            component="label"
+                            htmlFor="meta"
+                            sx={{
+                              display: "block",
+                              mb: 0.7,
+                              fontSize: 14,
+                              fontWeight: 600,
+                            }}
+                          >
+                            Meta *
+                          </Typography>
+
+                          <TextField
+                            id="meta"
+                            fullWidth
+                            size="small"
+                            type="number"
+                            value={meta}
+                            onChange={(event) => {
+                              setMeta(event.target.value);
+
+                              setErrores((prev) => ({
+                                ...prev,
+                                meta: undefined,
+                              }));
+                            }}
+                            error={Boolean(errores.meta)}
+                            helperText={
+                              errores.meta || "Cantidad que quieres alcanzar"
+                            }
+                            slotProps={{
+                              htmlInput: {
+                                min: 0,
+                                step: 0.1,
+                              },
+                            }}
+                          />
+                        </Box>
+
+                        <Box>
+                          <Typography
+                            component="label"
+                            htmlFor="unidad"
+                            sx={{
+                              display: "block",
+                              mb: 0.7,
+                              fontSize: 14,
+                              fontWeight: 600,
+                            }}
+                          >
+                            Unidad *
+                          </Typography>
+
+                          <FormControl
+                            fullWidth
+                            size="small"
+                            error={Boolean(errores.unidad)}
+                          >
+                            <Select
+                              id="unidad"
+                              value={unidad}
+                              onChange={(event) => {
+                                setUnidad(event.target.value);
+
+                                setErrores((prev) => ({
+                                  ...prev,
+                                  unidad: undefined,
+                                }));
+                              }}
+                              displayEmpty
+                              renderValue={(valor) =>
+                                valor
+                                  ? formatearValor(valor)
+                                  : "Selecciona una unidad"
+                              }
+                            >
+                              <MenuItem value="">
+                                Selecciona una unidad
+                              </MenuItem>
+                              <MenuItem value="litros">Litros</MenuItem>
+                              <MenuItem value="ml">Ml</MenuItem>
+                              <MenuItem value="km">Km</MenuItem>
+                              <MenuItem value="metros">Metros</MenuItem>
+                              <MenuItem value="minutos">Minutos</MenuItem>
+                              <MenuItem value="horas">Horas</MenuItem>
+                              <MenuItem value="repeticiones">
+                                Repeticiones
+                              </MenuItem>
+                              <MenuItem value="páginas">Páginas</MenuItem>
+                              <MenuItem value="veces">Veces</MenuItem>
+                            </Select>
+                          </FormControl>
+
+                          {errores.unidad && (
+                            <Typography
+                              variant="caption"
+                              color="error"
+                              sx={{ ml: 1.5 }}
+                            >
+                              {errores.unidad}
+                            </Typography>
+                          )}
+                        </Box>
                       </Box>
                     </Stack>
 

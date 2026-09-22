@@ -14,6 +14,8 @@ export const editarHabitoSchema = z
     prioridad: z.string().min(1, "La prioridad es obligatoria"),
     fechaInicio: z.string().min(1, "La fecha de inicio es obligatoria"),
     fechaFinalizacion: z.string().optional(),
+    meta: z.coerce.number().min(1, "La meta debe ser mayor a 0"),
+    unidad: z.string().min(1, "La unidad es obligatoria"),
     activo: z.boolean(),
   })
   .superRefine((data, ctx) => {
