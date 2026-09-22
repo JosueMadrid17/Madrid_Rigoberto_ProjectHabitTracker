@@ -77,7 +77,9 @@ export class HabitosService {
         frecuencia: data.frecuencia,
         prioridad: data.prioridad,
         fechaInicio: data.fechaInicio ? new Date(data.fechaInicio) : undefined,
-        fechaFinalizacion: data.fechaFinalizacion ? new Date(data.fechaFinalizacion) : null,
+        fechaFinalizacion: data.fechaFinalizacion
+          ? new Date(data.fechaFinalizacion)
+          : null,
         activo: data.activo,
         meta: data.meta,
         unidad: data.unidad,
@@ -97,10 +99,18 @@ export class HabitosService {
       throw new NotFoundException('Hábito no encontrado');
     }
 
-    await this.prisma.habito.delete({
-      where: {
-        id: id,
-      },
+    await this.prisma.$transaction(async (tx) => {
+      await tx.registro.deleteMany({
+        where: {
+          habitoId: id,
+        },
+      });
+
+      await tx.habito.delete({
+        where: {
+          id: id,
+        },
+      });
     });
 
     return {
