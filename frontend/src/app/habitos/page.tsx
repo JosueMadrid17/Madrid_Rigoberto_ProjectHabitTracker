@@ -21,6 +21,8 @@ import {
   DialogTitle,
   IconButton,
   InputAdornment,
+  Menu,
+  MenuItem,
   OutlinedInput,
   Snackbar,
   Switch,
@@ -79,6 +81,12 @@ export default function HabitosPage() {
   const [cargando, setCargando] = useState(true);
   const [errorGeneral, setErrorGeneral] = useState("");
   const [busqueda, setBusqueda] = useState("");
+  const [categoriaFiltro, setCategoriaFiltro] = useState("todas");
+  const [estadoFiltro, setEstadoFiltro] = useState("todos");
+  const [ordenFiltro, setOrdenFiltro] = useState("recientes");
+  const [menuCategoria, setMenuCategoria] = useState<null | HTMLElement>(null);
+  const [menuEstado, setMenuEstado] = useState<null | HTMLElement>(null);
+  const [menuOrden, setMenuOrden] = useState<null | HTMLElement>(null);
   const [habitoEliminar, setHabitoEliminar] = useState<Habito | null>(null);
   const [eliminando, setEliminando] = useState(false);
   const [snackbar, setSnackbar] = useState({
@@ -131,21 +139,52 @@ export default function HabitosPage() {
     cargarHabitos();
   }, []);
 
+  const categorias = useMemo(() => {
+    return Array.from(
+      new Set(
+        habitos
+          .map((habito) => habito.categoria?.trim().toLowerCase())
+          .filter(Boolean),
+      ),
+    ).sort();
+  }, [habitos]);
+
   const habitosFiltrados = useMemo(() => {
     const texto = busqueda.trim().toLowerCase();
-
-    if (!texto) {
-      return habitos;
-    }
-
-    return habitos.filter((habito) => {
-      return (
+    const filtrados = habitos.filter((habito) => {
+      const coincideBusqueda =
+        !texto ||
         habito.nombre.toLowerCase().includes(texto) ||
         habito.descripcion?.toLowerCase().includes(texto) ||
-        habito.categoria?.toLowerCase().includes(texto)
-      );
+        habito.categoria?.toLowerCase().includes(texto);
+
+      const coincideCategoria =
+        categoriaFiltro === "todas" ||
+        habito.categoria?.toLowerCase() === categoriaFiltro;
+
+      const coincideEstado =
+        estadoFiltro === "todos" ||
+        (estadoFiltro === "activos" && habito.activo) ||
+        (estadoFiltro === "inactivos" && !habito.activo);
+
+      return coincideBusqueda && coincideCategoria && coincideEstado;
     });
-  }, [habitos, busqueda]);
+
+    return [...filtrados].sort((a, b) => {
+      if (ordenFiltro === "recientes") {
+        const fechaA = a.fechaInicio ? new Date(a.fechaInicio).getTime() : 0;
+        const fechaB = b.fechaInicio ? new Date(b.fechaInicio).getTime() : 0;
+        return fechaB - fechaA;
+      }
+
+      if (ordenFiltro === "antiguos") {
+        const fechaA = a.fechaInicio ? new Date(a.fechaInicio).getTime() : 0;
+        const fechaB = b.fechaInicio ? new Date(b.fechaInicio).getTime() : 0;
+        return fechaA - fechaB;
+      }
+      return a.nombre.localeCompare(b.nombre, "es");
+    });
+  }, [habitos, busqueda, categoriaFiltro, estadoFiltro, ordenFiltro]);
 
   const handleEliminar = async () => {
     if (!habitoEliminar) return;
@@ -352,6 +391,7 @@ export default function HabitosPage() {
               <Button
                 variant="outlined"
                 endIcon={<ExpandMore />}
+                onClick={(event) => setMenuCategoria(event.currentTarget)}
                 sx={{
                   height: 40,
                   minWidth: 155,
@@ -361,12 +401,44 @@ export default function HabitosPage() {
                   borderColor: "divider",
                 }}
               >
-                Todas las categorías
+                {categoriaFiltro === "todas"
+                  ? "Todas las categorías"
+                  : capitalizar(categoriaFiltro)}
               </Button>
+
+              <Menu
+                anchorEl={menuCategoria}
+                open={Boolean(menuCategoria)}
+                onClose={() => setMenuCategoria(null)}
+              >
+                <MenuItem
+                  selected={categoriaFiltro === "todas"}
+                  onClick={() => {
+                    setCategoriaFiltro("todas");
+                    setMenuCategoria(null);
+                  }}
+                >
+                  Todas las categorías
+                </MenuItem>
+
+                {categorias.map((categoria) => (
+                  <MenuItem
+                    key={categoria}
+                    selected={categoriaFiltro === categoria}
+                    onClick={() => {
+                      setCategoriaFiltro(categoria);
+                      setMenuCategoria(null);
+                    }}
+                  >
+                    {capitalizar(categoria)}
+                  </MenuItem>
+                ))}
+              </Menu>
 
               <Button
                 variant="outlined"
                 endIcon={<ExpandMore />}
+                onClick={(event) => setMenuEstado(event.currentTarget)}
                 sx={{
                   height: 40,
                   minWidth: 130,
@@ -376,12 +448,53 @@ export default function HabitosPage() {
                   borderColor: "divider",
                 }}
               >
-                Todos los estados
+                {estadoFiltro === "todos"
+                  ? "Todos los estados"
+                  : estadoFiltro === "activos"
+                    ? "Activos"
+                    : "Inactivos"}
               </Button>
+
+              <Menu
+                anchorEl={menuEstado}
+                open={Boolean(menuEstado)}
+                onClose={() => setMenuEstado(null)}
+              >
+                <MenuItem
+                  selected={estadoFiltro === "todos"}
+                  onClick={() => {
+                    setEstadoFiltro("todos");
+                    setMenuEstado(null);
+                  }}
+                >
+                  Todos los estados
+                </MenuItem>
+
+                <MenuItem
+                  selected={estadoFiltro === "activos"}
+                  onClick={() => {
+                    setEstadoFiltro("activos");
+                    setMenuEstado(null);
+                  }}
+                >
+                  Activos
+                </MenuItem>
+
+                <MenuItem
+                  selected={estadoFiltro === "inactivos"}
+                  onClick={() => {
+                    setEstadoFiltro("inactivos");
+                    setMenuEstado(null);
+                  }}
+                >
+                  Inactivos
+                </MenuItem>
+              </Menu>
 
               <Button
                 variant="outlined"
                 endIcon={<ExpandMore />}
+                onClick={(event) => setMenuOrden(event.currentTarget)}
                 sx={{
                   height: 40,
                   minWidth: 120,
@@ -391,8 +504,48 @@ export default function HabitosPage() {
                   borderColor: "divider",
                 }}
               >
-                Más recientes
+                {ordenFiltro === "recientes"
+                  ? "Más recientes"
+                  : ordenFiltro === "antiguos"
+                    ? "Más antiguos"
+                    : "Nombre A-Z"}
               </Button>
+
+              <Menu
+                anchorEl={menuOrden}
+                open={Boolean(menuOrden)}
+                onClose={() => setMenuOrden(null)}
+              >
+                <MenuItem
+                  selected={ordenFiltro === "recientes"}
+                  onClick={() => {
+                    setOrdenFiltro("recientes");
+                    setMenuOrden(null);
+                  }}
+                >
+                  Más recientes
+                </MenuItem>
+
+                <MenuItem
+                  selected={ordenFiltro === "antiguos"}
+                  onClick={() => {
+                    setOrdenFiltro("antiguos");
+                    setMenuOrden(null);
+                  }}
+                >
+                  Más antiguos
+                </MenuItem>
+
+                <MenuItem
+                  selected={ordenFiltro === "nombre"}
+                  onClick={() => {
+                    setOrdenFiltro("nombre");
+                    setMenuOrden(null);
+                  }}
+                >
+                  Nombre A-Z
+                </MenuItem>
+              </Menu>
             </Box>
 
             <Box
