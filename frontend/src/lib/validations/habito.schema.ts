@@ -12,6 +12,8 @@ export const habitoSchema = z
     categoria: z.string().min(1, "La categoría es obligatoria"),
     frecuencia: z.string().min(1, "La frecuencia es obligatoria"),
     prioridad: z.string().min(1, "La prioridad es obligatoria"),
+    meta: z.coerce.number().min(1, "La meta debe ser mayor a 0"),
+    unidad: z.string().min(1, "La unidad es obligatoria"),
     fechaInicio: z.string().min(1, "La fecha de inicio es obligatoria"),
     fechaFinalizacion: z.string().optional(),
     activo: z.boolean(),
