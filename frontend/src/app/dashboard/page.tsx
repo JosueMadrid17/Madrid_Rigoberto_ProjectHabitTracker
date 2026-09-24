@@ -1173,7 +1173,7 @@ export default function DashboardPage() {
               <Button
                 component={Link}
                 href="/habitos/nuevo"
-                variant="outlined"
+                variant="contained"
                 color="primary"
                 fullWidth
                 sx={{
